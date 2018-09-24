@@ -1,0 +1,259 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+#Time-series Analysis
+
+```{r}
+library(readr)
+Data_Spring_2018_NetImports <- read_csv("D:/Notes/Sem 2/Business Forecasting/Final/Data_Spring_2018_NetImports.csv")
+netImport <- Data_Spring_2018_NetImports
+NITS <- ts(netImport$Imports,start=c(2008,01),frequency = 4)
+plot(NITS)
+
+
+```
+
+```{r}
+summary(NITS)
+boxplot(NITS)
+```
+From the Boxplot there are 5 outliers. The data is skewed and there exists a spread between the 1st and the 3rd Quartile
+
+Decomposition
+```{r}
+decomp <- decompose(NITS)
+plot(decomp)
+```
+There is a significant trend compared to the seasonality in the time-series.
+
+```{r}
+acf(NITS)
+```
+
+```{r}
+decomp$type
+decomp$seasonal
+decomp$trend
+```
+
+```{r}
+library(forecast)
+temp_seasadj <-seasadj(decomp)
+seasadj(decomp)
+plot(NITS)
+lines(temp_seasadj, col = 'red')
+```
+From the seasonal adjustment we see that there is no seasonal fluctuation. This also shows that the data is not seasonal.
+
+#Forecasting US Net Imports
+
+
+# Naive Method
+```{r}
+naive_forecast <- naive(NITS,12)
+plot(naive_forecast)
+```
+
+```{r}
+residual_naive <- residuals(naive_forecast)
+plot(residual_naive)
+```
+
+```{r}
+hist(residual_naive)
+```
+
+```{r}
+Acf(naive_forecast$residuals)
+```
+These graphs show that the naïve method produces forecasts that appear to account for all available information. The mean of the residuals is close to zero and there is a little correlation in the residuals series. The time plot of the residuals shows that the variation of the residuals stays much the same across the historical data and therefore the residual variance can be treated as constant. This can also be seen on the histogram of the residuals. The histogram suggests that the residuals are not be normal.
+```{r}
+accuracy(naive_forecast)
+```
+Since RMSE value which is very high i.e., 109.7054 indicates that the forecasting method doesn't capture all the information and is not the best method for forecasting.
+```{r}
+forecast(naive_forecast, h=4)
+plot(forecast(naive_forecast, h=4))
+```
+
+
+#Simple Exponential Smoothing
+
+
+##Simple Moving Averages
+```{r}
+plot(NITS)
+ma3 <- ma(NITS, order = 3)
+lines(ma3, col= 'Red', lwd =3)
+```
+Simple Moving average of order 3 in Red
+
+```{r}
+plot(NITS)
+ma6 <- ma(NITS, order = 6)
+lines(ma3, col= 'Red', lwd =3)
+lines(ma6, col= 'Blue', lwd = 3)
+```
+Simple Moving average of order 6 in Blue
+```{r}
+plot(NITS)
+ma9 <- ma(NITS, order = 9)
+lines(ma3, col= 'Red', lwd =3)
+lines(ma6, col= 'Blue', lwd = 3)
+lines(ma6, col= 'Green', lwd = 3)
+```
+Simple Moving average of order 9 in Green
+```{r}
+forecast_ma <- forecast(object = ma3, h = 4)
+plot(forecast_ma)
+```
+Moving averages of order 3 is choosen because it overlaps with all the other orders and hence it makes better predictions.
+
+##Smoothing
+```{r}
+ses_forecast <- ses(NITS , h = 4)
+plot(ses_forecast)
+```
+
+```{r}
+summary(ses_forecast)
+```
+
+```{r}
+ses_residuals <- residuals(ses_forecast)
+plot(ses_residuals)
+```
+
+```{r}
+hist(ses_residuals)
+```
+
+```{r}
+Acf(ses_residuals)
+```
+These graphs show that the simple exponential smoothing method produces forecasts that appear to account for all available information. The mean of the residuals is close to zero and there is a little correlation in the residuals series. This can also be seen on the histogram of the residuals. The histogram suggests that the residuals are not be normal.
+
+```{r}
+accuracy(ses_forecast)
+```
+Since RMSE value which is very high i.e., 111.0094 indicates that the forecasting method isn't performing well.
+
+
+#Holt-Winters
+```{r}
+holt <- hw(NITS, h = 4)
+plot(holt)
+```
+
+```{r}
+summary(holt)
+```
+The value of alpha signifies that the variations are not smoothed and the predictions are unstable
+The value of beta signifies that trend completely depends on the previous period value.
+The value of gamma signifies that there is no seasonality in the predictions.
+
+```{r}
+holt_residuals <- resid(holt)
+plot(holt_residuals)
+```
+
+```{r}
+hist(holt_residuals)
+```
+
+```{r}
+Acf(holt_residuals)
+```
+These graphs show that the Holt Winters method produces forecasts that appear to account for all available information. The mean of the residuals is close to zero and there is a little correlation in the residuals series. This can also be seen on the histogram of the residuals. The histogram suggests that the residuals are not be normal.
+```{r}
+forecast(holt)
+```
+
+```{r}
+accuracy(holt)
+```
+Since RMSE value which is very high i.e., 107.5662 indicates that the forecasting method isn't performing well.
+
+
+#ARIMA or Box-Jenkins
+
+```{r}
+library(tseries)
+adf.test(NITS)
+```
+```{r}
+kpss.test(NITS)
+```
+From both ADF and KPSS test it is evident that time-seriesis not stationary
+
+```{r}
+ndiffs(NITS)
+```
+1 difference is needed to make the time-series stationary
+
+```{r}
+NITSdiff <- diff(NITS, differences = 1)
+plot(NITSdiff)
+```
+
+```{r}
+adf.test(NITSdiff)
+kpss.test(NITSdiff)
+```
+The adf and kpss retests indicates that time-series is now statinary 
+
+```{r}
+tsdisplay(NITSdiff)
+```
+Based on ACF and PACF plots the possible ARIMA models are ARIMA(1,1,1) ARIMA(2,1,1)
+
+```{r}
+arima(NITS, order = c(1,1,1))
+arima(NITS, order = c(2,1,1))
+```
+Based on the AIC, BIC Sigma^2 values ARIMA(2,1,1) model performs well.
+We can validate this by running auto.arima()
+```{r}
+arima_NITS <- auto.arima(NITS)
+arima_NITS
+```
+
+```{r}
+residual_arima <- residuals(arima_NITS)
+plot(residual_arima)
+```
+
+```{r}
+hist(residual_arima)
+```
+
+```{r}
+Acf(residual_arima)
+```
+These graphs show that the ARIMA model produces forecasts that appear to account for all available information. The mean of the residuals is close to zero and there is no significant correlation in the residuals series. This can also be seen on the histogram of the residuals. The histogram suggests that the residuals are not be normal.
+
+```{r}
+forecast(arima_NITS, h =4)
+```
+
+```{r}
+plot(forecast(arima_NITS, h=4))
+```
+
+```{r}
+summary(arima_NITS)
+```
+This model performs best as the RMSE value i.e 69.20748 is low.
+
+
+Naive: This model uses last period's data to forecast without adjusting them for any conditions. More useful when we want to compare this model's forecast with other forecasts generated by better models. 
+
+Simple Moving average: Simple Moving Average depends on the order, the smoothness increases with the order.
+
+Simple Exponential Smoothing: This model makes the data smooth using the exponential window function and are used to assign exponentially decreasing weights over time. More useful when recent observations need to be given more weight than past observations.
+
+Holt-Winters: This model is used to capture seasonality and comprises of three major components i.e. error, trend and seasonality. More useful when we want the model to be fast as it is incremental and saves time and it's three components helps us analyze how data is split.
+
+ARIMA: ARIMA model produces forecasts based upon prior values in the time series and the errors made by previous predictions. This allows the model to rapidly adjust for sudden changes in trend, resulting in more accurate forecasts.
